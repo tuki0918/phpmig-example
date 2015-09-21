@@ -1,18 +1,24 @@
 <?php
 
-use \Phpmig\Adapter;
+require __DIR__ . '/vendor/autoload.php';
 
-$container = new ArrayObject();
+use Illuminate\Database\Capsule\Manager as Capsule;
 
-// replace this with a better Phpmig\Adapter\AdapterInterface
-$container['phpmig.adapter'] = new Adapter\File\Flat(__DIR__ . DIRECTORY_SEPARATOR . 'migrations/.migrations.log');
+$container = new Pimple();
 
-$container['phpmig.migrations_path'] = __DIR__ . DIRECTORY_SEPARATOR . 'migrations';
+$container['db.config'] = require CONFIG_PATH . '/database.php';
+$container['db'] = $container->share(function($c) {
+    $db = new Capsule;
+    $db->addConnection($c['db.config']);
+    $db->setAsGlobal();
+    $db->bootEloquent();
+    return $db;
+});
 
-// You can also provide an array of migration files
-// $container['phpmig.migrations'] = array_merge(
-//     glob('migrations_1/*.php'),
-//     glob('migrations_2/*.php')
-// );
+$container['phpmig.adapter'] = $container->share(function($c) {
+    return new Phpmig\Adapter\Illuminate\Database($c['db'], 'migrations');
+});
 
+$container['phpmig.migrations_path'] = __DIR__ . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'migrations';
+$container['phpmig.migrations_template_path'] = $container['phpmig.migrations_path'] . DIRECTORY_SEPARATOR . '.template.php';
 return $container;
